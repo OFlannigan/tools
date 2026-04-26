@@ -92,7 +92,7 @@ function prompt_body {
 }
 
 function prompt_footer {
-  read -rp "Issue number (optional): " issue >&2
+  read -rp "Issue number (optional, when referencing an issue, prefix number with #): " issue >&2
   if [[ -n "$issue" ]]; then
     echo "Issue $issue"
   fi
