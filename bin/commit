@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+
+set -e
+
+TYPES=("docs" "feat" "fix" "refactor" "style" "test")
+SCOPE_REGEX='^[a-zA-Z0-9._*-]+$'
+
+function join_by {
+  local IFS="$1"
+  shift
+  echo "$*"
+}
+
+function prompt_type {
+  echo "Select commit type:" >&2
+  for i in "${!TYPES[@]}"; do
+    printf "%d) %s\n" "$((i+1))" "${TYPES[$i]}" >&2
+  done
+
+  while true; do
+    read -rp "Enter number or type name: " input >&2
+    
+    if [[ "$input" =~ ^[0-9]+$ ]] && ((input >= 1 && input <= ${#TYPES[@]})); then
+      echo "${TYPES[$((input-1))]}"
+      return
+    fi
+
+    for type in "${TYPES[@]}"; do
+      if [[ "$input" == "$type" ]]; then
+        echo "$type"
+        return
+      fi
+    done
+
+    echo "Invalid selection. Choose a number or one of: ${TYPES[*]}" >&2
+  done
+}
+
+function prompt_scope {
+  while true; do
+    read -rp "Scope (e.g. module, *, build): " scope >&2
+    if [[ "$scope" =~ $SCOPE_REGEX ]]; then
+      echo "$scope"
+      return
+    else
+      echo "Invalid scope. Must match regex: $SCOPE_REGEX" >&2
+    fi
+  done
+}
+
+function prompt_subject {
+  local default_subject="$1"
+  read -rp "Subject [$default_subject]: " subject >&2
+  subject="${subject:-$default_subject}"
+
+  if [[ -z "$subject" ]]; then
+    echo "Subject cannot be empty." >&2
+    prompt_subject "$default_subject"
+    return
+  fi
+
+  if [[ "$subject" =~ \.$ ]]; then
+    echo "Subject must not end with a dot." >&2
+    prompt_subject "$default_subject"
+    return
+  fi
+
+  echo "$subject"
+}
+
+function prompt_body {
+  echo "Enter body (press ENTER twice to finish):" >&2
+  body=""
+  empty_line=false
+
+  while true; do
+    IFS= read -r line
+
+    if [[ -z "$line" ]]; then
+      if $empty_line; then
+        break
+      fi
+      empty_line=true
+      body+=$'\n'
+    else
+      empty_line=false
+      body+="$line"$'\n'
+    fi
+  done
+
+  echo "$body" | fold -s -w 100
+}
+
+function prompt_footer {
+  read -rp "Issue number (optional): " issue >&2
+  if [[ -n "$issue" ]]; then
+    echo "Issue $issue"
+  fi
+}
+
+DEFAULT_SUBJECT="$(join_by ' ' "$@")"
+
+TYPE=$(prompt_type)
+SCOPE=$(prompt_scope)
+SUBJECT=$(prompt_subject "$DEFAULT_SUBJECT")
+BODY=$(prompt_body)
+FOOTER=$(prompt_footer)
+
+COMMIT_MSG="$TYPE($SCOPE): $SUBJECT"
+
+if [[ -n "$BODY" ]]; then
+  COMMIT_MSG+=$'\n\n'"$BODY"
+fi
+
+if [[ -n "$FOOTER" ]]; then
+  COMMIT_MSG+=$'\n\n'"$FOOTER"
+fi
+
+echo "" >&2
+echo "Generated commit message:" >&2
+echo "----------------------------------------" >&2
+echo "$COMMIT_MSG" >&2
+echo "----------------------------------------" >&2
+
+read -rp "Proceed with commit? (y/n): " confirm >&2
+if [[ "$confirm" == "y" ]]; then
+  git commit -m "$COMMIT_MSG"
+else
+  echo "Commit aborted." >&2
+fi
