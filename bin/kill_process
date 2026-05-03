@@ -1,0 +1,47 @@
+#!/bin/bash
+
+default="intellij"
+to_remove=$(pgrep -f "killprocess")
+
+if [ -z "$1" ]; then
+	process="$default"
+else
+	process="$1"
+fi
+
+pids=$(pgrep -d, -f "$process")
+
+pids=$(echo "$pids" | sed "s/$to_remove,//g")
+pids=$(echo "$pids" | sed "s/,$to_remove//g")
+pids=$(echo "$pids" | sed "s/$to_remove//g")
+
+IFS=',' read -ra pid_array <<< "$pids"
+
+if [ -z "$pids" ]; then
+	echo "No process found matching '$process'."
+	exit 1
+else
+	echo "The following process(es) will be terminated:"
+	echo
+	for pid in "${pid_array[@]}"; do
+		process_name=$(ps -p $pid -o comm=)
+		echo " - $process_name"
+	done
+fi
+
+echo
+read -p "Would you like to continue? [Y/n] " user_input
+echo
+
+if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
+	for pid in "${pid_array[@]}"; do
+		kill -9 "$pid"
+	done
+elif [[ "$user_input" == "n" || "$user_input" == "N" ]]; then
+	echo
+	echo "Process aborted"
+	exit 1
+else
+	echo "Please choose a valid input."
+	exit 1
+fi
