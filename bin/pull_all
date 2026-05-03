@@ -1,0 +1,28 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+  echo "Usage: pullall <path_to_directory>"
+  exit 1
+fi
+
+RED='\033[0;31m'
+NC='\033[0m'
+
+for dir in "$1"/*/; do
+  if [ -d "$dir/.git" ]; then
+    folder_name=$(basename "$dir")
+    echo "Updating repository in $folder_name"
+
+    output=$(cd "$dir" && git pull --rebase 2>&1)
+
+    if [[ $output == *"error:"* || $output == *"fatal:"* ]]; then
+      echo -e "${RED}Error in $folder_name:${NC}"
+      echo -e "${RED}$output${NC}"
+    else
+      echo "$output"
+    fi
+  else
+    folder_name=$(basename "$dir")
+    echo "$folder_name is not a git repository."
+  fi
+done
