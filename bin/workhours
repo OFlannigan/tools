@@ -1,0 +1,59 @@
+#!/bin/bash
+
+is_number() {
+ [[ $1 =~ ^[0-9]+$ ]]
+}
+
+if [ -z "$1" ]; then
+ echo "Usage: HH:MM"
+ exit 1
+fi
+
+input_time=$1
+input_hours=${input_time%%:*}
+input_minutes=${input_time##*:}
+
+if ! [[ $input_time =~ ^[0-9]{1,2}:[0-9]{2}$ ]]; then
+ echo "Invalid time format. Please use HH:MM."
+ exit 1
+fi
+
+if ! is_number "$input_hours" || ! is_number "$input_minutes"; then
+ echo "Invalid time. Hours and minutes should be numbers."
+ exit 1
+fi
+
+input_hours=$(echo $input_hours | sed 's/^0*//')
+input_minutes=$(echo $input_minutes | sed 's/^0*//')
+
+if (( input_hours < 0 || input_hours >= 24 )); then
+ echo "Invalid hours. Hours should be between 0 and 23."
+ exit 1
+fi
+
+if (( input_minutes < 0 || input_minutes >= 60 )); then
+ echo "Invalid minutes. Minutes should be between 0 and 59."
+ exit 1
+fi
+
+added_hours=8
+added_minutes=20
+added_hours_max=10
+added_minutes_max=50
+
+new_minutes=$((input_minutes + added_minutes))
+extra_hours=$((new_minutes / 60))
+new_minutes=$((new_minutes % 60))
+
+new_hours=$((input_hours + added_hours + extra_hours))
+new_hours=$((new_hours % 24))
+
+max_minutes=$((input_minutes + added_minutes_max))
+max_extra_hours=$((max_minutes / 60))
+max_minutes=$((max_minutes % 60))
+
+max_hours=$((input_hours + added_hours_max + max_extra_hours))
+max_hours=$((max_hours % 24))
+
+printf "You can finish work today at: %02d:%02d\n" $new_hours $new_minutes
+printf "Latest possible time to finish work: %02d:%02d\n" $max_hours $max_minutes
