@@ -2,7 +2,7 @@
 
 set -e
 
-TYPES=("docs" "feat" "fix" "refactor" "style" "test")
+TYPES=("docs" "feat" "fix" "refactor" "style" "test" "chore")
 SCOPE_REGEX='^[a-zA-Z0-9._*-]+$'
 
 function join_by {
