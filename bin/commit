@@ -1,9 +1,39 @@
 #!/usr/bin/env bash
 
-set -e
+set -eo pipefail
 
 TYPES=("docs" "feat" "fix" "refactor" "style" "test" "chore")
 SCOPE_REGEX='^[a-zA-Z0-9._*-]+$'
+
+# Check for prek (pre-commit hooks tool)
+pre_commit_tool=""
+if [ -x "$(command -v prek)" ]; then
+  pre_commit_tool="prek"
+fi
+
+if [ -z "$pre_commit_tool" ]; then
+  echo "You need the prek tool installed for pre-commit hooks."
+  echo "Install via your package manager (brew, apt, choco, etc.)"
+  echo "More info: https://prek.j178.dev/"
+  exit 1
+fi
+
+# Check if there are any changed files
+changed=$(git status --porcelain)
+if [[ "$changed" == "" ]]; then
+  echo "No changes to commit."
+  exit 0
+fi
+
+# Check if it's a GitHub repo
+is_github_repo=$(git config --get remote.origin.url | grep -q github; echo $?)
+
+# Install pre-commit hooks
+$pre_commit_tool install --allow-missing-config
+
+echo -e "\e[1mGit Status:\e[0m"
+git status -s
+echo ""
 
 function join_by {
   local IFS="$1"
@@ -46,6 +76,20 @@ function prompt_scope {
       echo "Invalid scope. Must match regex: $SCOPE_REGEX" >&2
     fi
   done
+}
+
+function prompt_uncommitted {
+  if ! git diff --exit-code --quiet; then
+    echo "Your index contains uncommitted changes."
+    while true; do
+      read -p "Do you want to perform a git add .? " yn >&2
+      case $yn in
+        [Yy]* ) git add .; break;;
+        [Nn]* ) echo ""; break;;
+        * ) echo "Please answer yes or no." >&2;;
+      esac
+    done
+  fi
 }
 
 function prompt_subject {
@@ -100,6 +144,7 @@ function prompt_footer {
 
 DEFAULT_SUBJECT="$(join_by ' ' "$@")"
 
+prompt_uncommitted
 TYPE=$(prompt_type)
 SCOPE=$(prompt_scope)
 SUBJECT=$(prompt_subject "$DEFAULT_SUBJECT")
